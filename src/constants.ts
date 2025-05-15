@@ -1,0 +1,16 @@
+export const LOCAL_PART_MAX_LENGTH = 64;
+export const DOMAIN_MAX_LENGTH = 254;
+export const SUB_DOMAIN_MAX_LENGTH = 63;
+export const SPACE = " ";
+export const HORIZONTAL_TAB = "\t";
+export const AT_SYMBOL = "@";
+export const DOT = ".";
+export const LEFT_PARENTHESIS = "(";
+export const RIGHT_PARENTHESIS = ")";
+export const DISPLAY_SEPARATOR = " <";
+export const DISPLAY_START = "<";
+export const DISPLAY_END = ">";
+export const MAILTO_URI_PREFIX = "mailto:";
+export const DOUBLE_QUOTE = '"';
+export const LEFT_BRACKET = "[";
+export const RIGHT_BRACKET = "]";
