@@ -74,7 +74,7 @@ console.log(isValidDomain('invalid domain')); // false
 import { isValid, parse, type EmailOptions } from '@sylke/email-validation';
 
 const options: EmailOptions = {
-  minimumSubDomains: 2, // Require at least one subdomain (e.g., sub.example.com)
+  minimumSubDomains: 2, // Require at least two parts to the domain (e.g., example.com)
   allowDomainLiteral: false, // Disallow domain literals like [127.0.0.1]
   allowDisplayText: false, // Disallow display names
 };
