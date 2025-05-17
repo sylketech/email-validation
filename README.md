@@ -1,14 +1,27 @@
 # @sylke/email-validation
 
-RFC-compliant email validation and parsing library for JavaScript and TypeScript.
+[![npm version](https://img.shields.io/npm/v/@sylke/email-validation)](https://www.npmjs.com/package/@sylke/email-validation)
+[![Build Status](https://github.com/sylketech/email-validation/actions/workflows/ci.yml/badge.svg)](https://github.com/sylketech/email-validation/actions)
+[![License](https://img.shields.io/npm/l/@sylke/email-validation)](./LICENSE)
 
-## Description
+This library provides email validation and parsing functionality.
 
-This library provides robust email validation and parsing functionality that strictly follows RFC standards. It allows you to:
-
-- Validate email addresses
-- Validate individual parts of an email address
+- Validate email addresses according to [RFC 5322 (Internet Message Format)](https://datatracker.ietf.org/doc/html/rfc5322) specifications
+- Validate individual parts of an email address (local part, domain)
 - Parse email addresses into their components (local part, domain, display name)
+- Support for internationalized domain names
+- Handled quoted strings and special characters in the local part
+- Support for domain literals (IP addresses in square brackets)
+
+## Table of Contents
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Basic Validation](#basic-validation)
+  - [Parsing Email Addresses](#parsing-email-addresses)
+  - [Validating Parts](#validating-parts)
+  - [Custom Options](#custom-options)
+  - [Integration with Zod](#integration-with-zod)
+- [License](#license)
 
 ## Installation
 
@@ -87,6 +100,38 @@ try {
   parse('John Doe <john.doe@example.com>', options);
 } catch (error) {
   console.error(error.message);
+}
+```
+
+### Integration with Zod
+
+```typescript
+import { z } from 'zod';
+import { isValid } from '@sylke/email-validation';
+
+// Create a schema with custom email validation using @sylke/email-validation
+const userSchema = z.object({
+  email: z.string().refine(
+    (email) => isValid(email, {
+      minimumSubDomains: 2,
+      allowDomainLiteral: false,
+      allowDisplayText: false,
+    }), 
+    {
+      message: 'Invalid email address format',
+    }
+  ),
+});
+
+// Example usage
+try {
+  const validUser = userSchema.parse({ email: 'user@example.com' });
+  console.log('Valid user:', validUser);
+
+  // This will throw an error
+  const invalidUser = userSchema.parse({ email: 'invalid-email' });
+} catch (error) {
+  console.error('Validation error:', error.errors);
 }
 ```
 
