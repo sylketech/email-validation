@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EmailError, ErrorKind } from "./errors";
+import type { EmailOptions } from "./options";
 import {
   encode,
   isAtomChar,
@@ -13,6 +14,12 @@ import {
   isUtf8NonAsciiChar,
   isVisibleChar,
   isWhitespaceChar,
+  parseDomain,
+  parseLiteralDomain,
+  parseLocalPart,
+  parseQuotedLocalPart,
+  parseTextDomain,
+  parseUnquotedLocalPart,
   splitAt,
   splitDisplayEmail,
   splitParts,
@@ -119,5 +126,146 @@ describe("character checks", () => {
   it("isUtf8NonAsciiChar returns true for non-ASCII", () => {
     expect(isUtf8NonAsciiChar("ü")).toBe(true);
     expect(isUtf8NonAsciiChar("A")).toBe(false);
+  });
+});
+
+describe("parseLocalPart", () => {
+  it("validates valid local parts", () => {
+    expect(() => parseLocalPart("simple")).not.toThrow();
+    expect(() => parseLocalPart("dot.separated")).not.toThrow();
+    expect(() => parseLocalPart('"quoted.string"')).not.toThrow();
+  });
+
+  it("throws on empty local part", () => {
+    expect(() => parseLocalPart("")).toThrowError(new EmailError(ErrorKind.LocalPartEmpty));
+  });
+
+  it("throws on too long local part", () => {
+    const tooLong = "a".repeat(65);
+    expect(() => parseLocalPart(tooLong)).toThrowError(new EmailError(ErrorKind.LocalPartTooLong));
+  });
+
+  it("throws on empty quoted local part", () => {
+    expect(() => parseLocalPart('""')).toThrowError(new EmailError(ErrorKind.LocalPartEmpty));
+  });
+});
+
+describe("parseQuotedLocalPart", () => {
+  it("validates valid quoted content", () => {
+    expect(() => parseQuotedLocalPart("simple")).not.toThrow();
+    expect(() => parseQuotedLocalPart("with space")).not.toThrow();
+    expect(() => parseQuotedLocalPart('with\\"escaped\\"quotes')).not.toThrow();
+  });
+
+  it("throws on invalid quoted content", () => {
+    expect(() => parseQuotedLocalPart('invalid"quote')).toThrowError(
+      new EmailError(ErrorKind.InvalidCharacter)
+    );
+  });
+});
+
+describe("parseUnquotedLocalPart", () => {
+  it("validates valid unquoted local parts", () => {
+    expect(() => parseUnquotedLocalPart("simple")).not.toThrow();
+    expect(() => parseUnquotedLocalPart("dot.separated")).not.toThrow();
+    expect(() => parseUnquotedLocalPart("with-hyphen")).not.toThrow();
+  });
+
+  it("throws on invalid unquoted local parts", () => {
+    expect(() => parseUnquotedLocalPart("invalid..dots")).toThrowError(
+      new EmailError(ErrorKind.InvalidCharacter)
+    );
+    expect(() => parseUnquotedLocalPart("invalid space")).toThrowError(
+      new EmailError(ErrorKind.InvalidCharacter)
+    );
+  });
+});
+
+describe("parseDomain", () => {
+  const opts: EmailOptions = {
+    minimumSubDomains: 2,
+    allowDomainLiteral: true,
+    allowDisplayText: true,
+  };
+
+  const opts2: EmailOptions = {
+    minimumSubDomains: 2,
+    allowDomainLiteral: false,
+    allowDisplayText: true,
+  };
+
+  it("validates valid domains", () => {
+    expect(() => parseDomain("example.com", opts)).not.toThrow();
+    expect(() => parseDomain("sub.example.com", opts)).not.toThrow();
+  });
+
+  it("validates domain literals when allowed", () => {
+    expect(() => parseDomain("[127.0.0.1]", opts)).not.toThrow();
+  });
+
+  it("throws on empty domain", () => {
+    expect(() => parseDomain("", opts)).toThrowError(new EmailError(ErrorKind.DomainEmpty));
+  });
+
+  it("throws on too long domain", () => {
+    const tooLong = `${"a".repeat(256)}.com`;
+    expect(() => parseDomain(tooLong, opts)).toThrowError(new EmailError(ErrorKind.DomainTooLong));
+  });
+
+  it("throws on domain literal when not allowed", () => {
+    expect(() => parseDomain("[127.0.0.1]", opts2)).toThrowError(
+      new EmailError(ErrorKind.UnsupportedDomainLiteral)
+    );
+  });
+});
+
+describe("parseTextDomain", () => {
+  const opts: EmailOptions = {
+    minimumSubDomains: 2,
+    allowDomainLiteral: false,
+    allowDisplayText: true,
+  };
+
+  it("validates valid text domains", () => {
+    expect(() => parseTextDomain("example.com", opts)).not.toThrow();
+    expect(() => parseTextDomain("sub.example.com", opts)).not.toThrow();
+  });
+
+  it("throws on empty subdomain", () => {
+    expect(() => parseTextDomain("example..com", opts)).toThrowError(
+      new EmailError(ErrorKind.SubdomainEmpty)
+    );
+  });
+
+  it("throws on too long subdomain", () => {
+    const tooLong = `${"a".repeat(64)}.com`;
+    expect(() => parseTextDomain(tooLong, opts)).toThrowError(
+      new EmailError(ErrorKind.SubdomainTooLong)
+    );
+  });
+
+  it("throws on invalid subdomain character", () => {
+    expect(() => parseTextDomain("invalid_char.com", opts)).toThrowError(
+      new EmailError(ErrorKind.InvalidCharacter)
+    );
+  });
+
+  it("throws when not enough subdomains", () => {
+    expect(() => parseTextDomain("singlepart", opts)).toThrowError(
+      new EmailError(ErrorKind.DomainTooFew)
+    );
+  });
+});
+
+describe("parseLiteralDomain", () => {
+  it("validates valid literal domains", () => {
+    expect(() => parseLiteralDomain("127.0.0.1")).not.toThrow();
+    expect(() => parseLiteralDomain("IPv6:2001:db8::1")).not.toThrow();
+  });
+
+  it("throws on invalid literal domain characters", () => {
+    expect(() => parseLiteralDomain("invalid\\character")).toThrowError(
+      new EmailError(ErrorKind.InvalidCharacter)
+    );
   });
 });
